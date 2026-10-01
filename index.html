@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SheetFlow AI — Stop Googling Excel Formulas</title>
+  <meta name="description" content="Stop Googling Excel formulas. Just type what you want. SheetFlow AI turns plain English into Excel and Google Sheets formulas instantly." />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            canvas: "#f8faf9",
+            ink: "#0f172a",
+            mute: "#64748b",
+            line: "#e2e8f0",
+            emerald: {
+              50: "#ecfdf5",
+              100: "#d1fae5",
+              400: "#34d399",
+              500: "#10b981",
+              600: "#059669",
+              700: "#047857",
+            },
+          },
+          fontFamily: {
+            sans: ['"Inter"', "system-ui", "sans-serif"],
+            display: ['"Inter"', "system-ui", "sans-serif"],
+            mono: ['"JetBrains Mono"', "ui-monospace", "monospace"],
+          },
+          boxShadow: {
+            soft: "0 1px 2px rgba(15,23,42,0.04), 0 8px 24px rgba(15,23,42,0.06)",
+            lift: "0 4px 6px rgba(15,23,42,0.03), 0 20px 40px rgba(15,23,42,0.08)",
+            glow: "0 0 0 1px rgba(16,185,129,0.15), 0 12px 40px rgba(16,185,129,0.18)",
+          },
+          borderRadius: {
+            "2.5xl": "1.25rem",
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      background-color: #f8faf9;
+      background-image:
+        radial-gradient(ellipse 70% 50% at 50% -10%, rgba(16, 185, 129, 0.14), transparent 55%),
+        radial-gradient(ellipse 40% 35% at 90% 20%, rgba(5, 150, 105, 0.08), transparent 50%),
+        radial-gradient(ellipse 35% 30% at 10% 40%, rgba(52, 211, 153, 0.07), transparent 50%);
+    }
+    .bg-grid {
+      background-image:
+        linear-gradient(rgba(15, 23, 42, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(15, 23, 42, 0.035) 1px, transparent 1px);
+      background-size: 56px 56px;
+      mask-image: radial-gradient(ellipse 80% 70% at 50% 30%, black 20%, transparent 75%);
+    }
+    .modal-open { overflow: hidden; }
+    .modal-backdrop {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    .modal-backdrop.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .modal-panel {
+      transform: translateY(12px) scale(0.98);
+      opacity: 0;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+    .modal-backdrop.active .modal-panel {
+      transform: translateY(0) scale(1);
+      opacity: 1;
+    }
+    .faq-answer {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease, opacity 0.25s ease, padding 0.25s ease;
+      opacity: 0;
+    }
+    .faq-item.open .faq-answer {
+      max-height: 240px;
+      opacity: 1;
+      padding-top: 0.25rem;
+      padding-bottom: 1.25rem;
+    }
+    .faq-item.open .faq-chevron {
+      transform: rotate(180deg);
+    }
+  </style>
+</head>
+<body class="font-sans text-ink antialiased min-h-screen">
+  <div class="bg-grid fixed inset-0 pointer-events-none" aria-hidden="true"></div>
+
+  <!-- Nav -->
+  <header class="relative z-30 sticky top-0 backdrop-blur-xl bg-canvas/80 border-b border-line/80">
+    <div class="max-w-6xl mx-auto px-5 sm:px-6 h-16 flex items-center justify-between">
+      <a href="#" class="flex items-center gap-2.5 group">
+        <span class="relative flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-soft ring-1 ring-emerald-500/30">
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <path d="M3 9h18M9 3v18" />
+          </svg>
+        </span>
+        <span class="text-[15px] font-bold tracking-tight text-ink">SheetFlow AI</span>
+      </a>
+
+      <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-mute">
+        <a href="#features" class="hover:text-ink transition-colors">Features</a>
+        <a href="#pricing" class="hover:text-ink transition-colors">Pricing</a>
+        <a href="#faq" class="hover:text-ink transition-colors">FAQ</a>
+      </nav>
+
+      <a href="#generator" class="inline-flex items-center rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-soft hover:bg-emerald-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2">
+        Try Free
+      </a>
+    </div>
+  </header>
+
+  <main class="relative z-10">
+    <!-- Hero -->
+    <section class="px-5 sm:px-6 pt-16 sm:pt-24 pb-10 text-center max-w-4xl mx-auto">
+      <div class="inline-flex items-center gap-2 rounded-full border border-line bg-white/70 px-3 py-1 text-xs font-medium text-mute shadow-soft mb-6">
+        <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+        Plain English → working formulas
+      </div>
+      <h1 class="text-4xl sm:text-5xl md:text-[3.5rem] font-extrabold tracking-tight text-ink leading-[1.08]">
+        Stop Googling Excel formulas.<br class="hidden sm:block" />
+        <span class="text-emerald-600">Just type what you want.</span>
+      </h1>
+      <p class="mt-5 text-base sm:text-lg text-mute max-w-2xl mx-auto leading-relaxed">
+        SheetFlow AI turns natural language into clean Excel &amp; Google Sheets formulas — with logic you can trust.
+      </p>
+    </section>
+
+    <!-- Generator Card -->
+    <section id="generator" class="px-5 sm:px-6 pb-20 sm:pb-28">
+      <div class="max-w-2xl mx-auto rounded-2.5xl border border-line bg-white/90 backdrop-blur-sm shadow-lift p-5 sm:p-7">
+        <!-- Tool toggle -->
+        <div class="flex items-center justify-between gap-3 mb-4">
+          <span class="text-xs font-semibold uppercase tracking-wider text-mute">Target</span>
+          <div class="inline-flex rounded-full border border-line bg-slate-50 p-1" role="group" aria-label="Spreadsheet target">
+            <button type="button" id="btn-excel" data-tool="Excel" class="tool-btn rounded-full px-3.5 py-1.5 text-xs font-semibold transition bg-white text-ink shadow-soft">
+              Excel
+            </button>
+            <button type="button" id="btn-sheets" data-tool="Google Sheets" class="tool-btn rounded-full px-3.5 py-1.5 text-xs font-semibold transition text-mute hover:text-ink">
+              Google Sheets
+            </button>
+          </div>
+        </div>
+
+        <label for="prompt" class="sr-only">Describe your formula</label>
+        <textarea
+          id="prompt"
+          rows="4"
+          placeholder="Describe the formula you need… e.g. Sum sales where status is Paid and month is January"
+          class="w-full resize-y min-h-[120px] rounded-xl border border-line bg-slate-50/80 px-4 py-3.5 text-[15px] text-ink placeholder:text-mute/60 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition"
+        ></textarea>
+
+        <!-- Example chips -->
+        <div class="mt-3 flex flex-wrap gap-2">
+          <button type="button" class="example-chip rounded-full border border-line bg-white px-3 py-1.5 text-xs font-medium text-mute hover:border-emerald-300 hover:text-emerald-700 hover:bg-emerald-50 transition" data-example="Calculate the average of column B if status in column A is Paid">
+            Calculate average if Paid
+          </button>
+          <button type="button" class="example-chip rounded-full border border-line bg-white px-3 py-1.5 text-xs font-medium text-mute hover:border-emerald-300 hover:text-emerald-700 hover:bg-emerald-50 transition" data-example="VLOOKUP with multiple conditions: find price where Product ID matches and Region is West">
+            VLOOKUP with multiple conditions
+          </button>
+          <button type="button" class="example-chip rounded-full border border-line bg-white px-3 py-1.5 text-xs font-medium text-mute hover:border-emerald-300 hover:text-emerald-700 hover:bg-emerald-50 transition" data-example="Extract the name part before @ from an email address in cell A2">
+            Extract name from email
+          </button>
+          <button type="button" class="example-chip rounded-full border border-line bg-white px-3 py-1.5 text-xs font-medium text-mute hover:border-emerald-300 hover:text-emerald-700 hover:bg-emerald-50 transition" data-example="Count unique values in column C where date in column A is this month">
+            Count unique this month
+          </button>
+        </div>
+
+        <div class="mt-5 flex flex-col sm:flex-row sm:items-center gap-3">
+          <button
+            type="button"
+            id="generate-btn"
+            class="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-soft hover:bg-emerald-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 transition disabled:opacity-60 disabled:cursor-not-allowed w-full sm:w-auto"
+          >
+            <svg id="generate-spinner" class="hidden h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z"></path>
+            </svg>
+            <span id="generate-label">Generate Formula</span>
+          </button>
+          <p class="text-xs text-mute sm:ml-1">No signup required for Free tier</p>
+        </div>
+
+        <div id="error" class="mt-4 hidden rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert"></div>
+
+        <!-- Result -->
+        <div class="mt-6">
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="text-xs font-semibold uppercase tracking-wider text-mute">Result</h2>
+            <button type="button" id="copy-btn" class="hidden inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold text-mute hover:text-ink hover:bg-slate-100 transition">
+              <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <rect x="9" y="9" width="13" height="13" rx="2" />
+                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+              </svg>
+              <span id="copy-label">Copy</span>
+            </button>
+          </div>
+          <div
+            id="result"
+            class="min-h-[112px] rounded-xl border border-slate-800/80 bg-[#0b1220] px-4 py-4 font-mono text-[13px] sm:text-sm text-emerald-100/95 whitespace-pre-wrap break-words leading-relaxed shadow-inner"
+          >
+            <span class="text-slate-500 font-sans text-sm">Your formula will appear here…</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features -->
+    <section id="features" class="px-5 sm:px-6 py-20 sm:py-24 border-t border-line/80 bg-white/40">
+      <div class="max-w-6xl mx-auto">
+        <div class="max-w-2xl">
+          <p class="text-xs font-semibold uppercase tracking-wider text-emerald-600">Features</p>
+          <h2 class="mt-2 text-3xl sm:text-4xl font-extrabold tracking-tight text-ink">Built for speed, accuracy, and clarity</h2>
+          <p class="mt-3 text-mute leading-relaxed">Everything you need to ship spreadsheet logic without digging through Stack Overflow.</p>
+        </div>
+
+        <div class="mt-12 grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <article class="rounded-2xl border border-line bg-white p-6 shadow-soft">
+            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+            </div>
+            <h3 class="mt-4 text-lg font-bold text-ink">Zero Syntax Errors</h3>
+            <p class="mt-2 text-sm text-mute leading-relaxed">Production-ready formulas with correct nesting, ranges, and argument order — so you paste and go.</p>
+          </article>
+
+          <article class="rounded-2xl border border-line bg-white p-6 shadow-soft">
+            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>
+            </div>
+            <h3 class="mt-4 text-lg font-bold text-ink">Cross-Platform Ready</h3>
+            <p class="mt-2 text-sm text-mute leading-relaxed">Toggle between Excel and Google Sheets. Get dialect-aware formulas that match your tool of choice.</p>
+          </article>
+
+          <article class="rounded-2xl border border-line bg-white p-6 shadow-soft sm:col-span-2 lg:col-span-1">
+            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="9"/></svg>
+            </div>
+            <h3 class="mt-4 text-lg font-bold text-ink">Instant Logic Breakdown</h3>
+            <p class="mt-2 text-sm text-mute leading-relaxed">Every result includes a concise explanation of arguments and logic — learn while you automate.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- Pricing -->
+    <section id="pricing" class="px-5 sm:px-6 py-20 sm:py-24 border-t border-line/80">
+      <div class="max-w-6xl mx-auto">
+        <div class="text-center max-w-2xl mx-auto">
+          <p class="text-xs font-semibold uppercase tracking-wider text-emerald-600">Pricing</p>
+          <h2 class="mt-2 text-3xl sm:text-4xl font-extrabold tracking-tight text-ink">Simple plans. Serious output.</h2>
+          <p class="mt-3 text-mute">Start free. Upgrade when you need higher limits and priority generation.</p>
+        </div>
+
+        <div class="mt-12 grid md:grid-cols-2 gap-6 max-w-4xl mx-auto items-stretch">
+          <!-- Free -->
+          <div class="rounded-2.5xl border border-line bg-white p-7 sm:p-8 shadow-soft flex flex-col">
+            <p class="text-sm font-semibold text-mute">Free Tier</p>
+            <p class="mt-3 flex items-baseline gap-1">
+              <span class="text-4xl font-extrabold tracking-tight text-ink">$0</span>
+            </p>
+            <p class="mt-2 text-sm text-mute">Perfect for occasional formula help.</p>
+            <ul class="mt-6 space-y-3 text-sm text-ink flex-1">
+              <li class="flex gap-2.5"><span class="text-emerald-500 mt-0.5 shrink-0"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg></span> Limited daily generations</li>
+              <li class="flex gap-2.5"><span class="text-emerald-500 mt-0.5 shrink-0"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg></span> Excel &amp; Google Sheets support</li>
+              <li class="flex gap-2.5"><span class="text-emerald-500 mt-0.5 shrink-0"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg></span> Logic breakdown included</li>
+            </ul>
+            <a href="#generator" class="mt-8 inline-flex justify-center rounded-xl border border-line bg-slate-50 px-4 py-3 text-sm font-semibold text-ink hover:bg-slate-100 transition">
+              Get Started Free
+            </a>
+          </div>
+
+          <!-- Pro -->
+          <div class="relative rounded-2.5xl border-2 border-emerald-500/40 bg-white p-7 sm:p-8 shadow-glow flex flex-col">
+            <span class="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-emerald-600 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white shadow-soft">
+              Most Popular
+            </span>
+            <p class="text-sm font-semibold text-emerald-700">Pro Plan</p>
+            <p class="mt-3 flex items-baseline gap-1">
+              <span class="text-4xl font-extrabold tracking-tight text-ink">$4.99</span>
+              <span class="text-sm font-medium text-mute">/mo</span>
+            </p>
+            <p class="mt-2 text-sm text-mute">For power users who live in spreadsheets.</p>
+            <ul class="mt-6 space-y-3 text-sm text-ink flex-1">
+              <li class="flex gap-2.5"><span class="text-emerald-500 mt-0.5 shrink-0"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg></span> Higher daily generation limits</li>
+              <li class="flex gap-2.5"><span class="text-emerald-500 mt-0.5 shrink-0"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg></span> Priority generation queue</li>
+              <li class="flex gap-2.5"><span class="text-emerald-500 mt-0.5 shrink-0"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg></span> Advanced multi-condition formulas</li>
+              <li class="flex gap-2.5"><span class="text-emerald-500 mt-0.5 shrink-0"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg></span> Email support within 24 hours</li>
+              <li class="flex gap-2.5"><span class="text-emerald-500 mt-0.5 shrink-0"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg></span> 7-day money-back guarantee</li>
+            </ul>
+            <a href="mailto:michaellabs.co@gmail.com?subject=SheetFlow%20AI%20Pro%20Purchase" class="mt-8 inline-flex justify-center rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-700 shadow-soft transition">
+              Upgrade to Pro
+            </a>
+          </div>
+        </div>
+
+        <p class="mt-8 text-center text-sm text-mute">
+          Questions?
+          <a href="mailto:michaellabs.co@gmail.com" class="font-medium text-emerald-700 hover:text-emerald-600 underline underline-offset-2">michaellabs.co@gmail.com</a>
+        </p>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section id="faq" class="px-5 sm:px-6 py-20 sm:py-24 border-t border-line/80 bg-white/40">
+      <div class="max-w-3xl mx-auto">
+        <div class="text-center">
+          <p class="text-xs font-semibold uppercase tracking-wider text-emerald-600">FAQ</p>
+          <h2 class="mt-2 text-3xl sm:text-4xl font-extrabold tracking-tight text-ink">Common questions</h2>
+        </div>
+
+        <div class="mt-10 divide-y divide-line border-y border-line">
+          <div class="faq-item">
+            <button type="button" class="faq-toggle w-full flex items-center justify-between gap-4 py-5 text-left">
+              <span class="font-semibold text-ink">Which Excel and Google Sheets versions are supported?</span>
+              <svg class="faq-chevron h-5 w-5 text-mute shrink-0 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="faq-answer text-sm text-mute leading-relaxed pr-8">
+              SheetFlow AI generates formulas compatible with modern Excel (Microsoft 365 / Excel 2019+) and Google Sheets. Some newer functions (e.g. dynamic arrays, LAMBDA) may require updated desktop or web clients.
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button type="button" class="faq-toggle w-full flex items-center justify-between gap-4 py-5 text-left">
+              <span class="font-semibold text-ink">Do you offer a refund guarantee?</span>
+              <svg class="faq-chevron h-5 w-5 text-mute shrink-0 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="faq-answer text-sm text-mute leading-relaxed pr-8">
+              Yes. Pro subscriptions include a <strong class="text-ink font-semibold">7-day Money Back Guarantee</strong>. If you are not satisfied, email us within 7 days of purchase for a full refund. See our Refund Policy for details.
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button type="button" class="faq-toggle w-full flex items-center justify-between gap-4 py-5 text-left">
+              <span class="font-semibold text-ink">Will the formulas always be correct?</span>
+              <svg class="faq-chevron h-5 w-5 text-mute shrink-0 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="faq-answer text-sm text-mute leading-relaxed pr-8">
+              We optimize for accuracy and include a short logic breakdown with every result. You should still verify formulas against your own data before relying on them for critical decisions.
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button type="button" class="faq-toggle w-full flex items-center justify-between gap-4 py-5 text-left">
+              <span class="font-semibold text-ink">How do I contact support?</span>
+              <svg class="faq-chevron h-5 w-5 text-mute shrink-0 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="faq-answer text-sm text-mute leading-relaxed pr-8">
+              Email <a href="mailto:michaellabs.co@gmail.com" class="text-emerald-700 underline underline-offset-2">michaellabs.co@gmail.com</a>. Pro customers typically receive a reply within 24 hours on business days.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="relative z-10 border-t border-line bg-white/70 px-5 sm:px-6 py-10">
+    <div class="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+      <div>
+        <p class="text-sm font-semibold text-ink">© 2026 SheetFlow AI by MichaelLabs</p>
+        <p class="mt-1 text-sm text-mute">
+          Support:
+          <a href="mailto:michaellabs.co@gmail.com" class="text-emerald-700 hover:underline">michaellabs.co@gmail.com</a>
+        </p>
+      </div>
+      <nav class="flex flex-wrap gap-x-5 gap-y-2 text-sm" aria-label="Legal">
+        <button type="button" class="text-mute hover:text-ink transition" data-modal="terms">Terms of Service</button>
+        <button type="button" class="text-mute hover:text-ink transition" data-modal="privacy">Privacy Policy</button>
+        <button type="button" class="text-mute hover:text-ink transition" data-modal="refund">Refund Policy</button>
+      </nav>
+    </div>
+  </footer>
+
+  <!-- Modal: Terms -->
+  <div id="modal-terms" class="modal-backdrop fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" aria-hidden="true">
+    <div class="modal-panel w-full max-w-lg max-h-[80vh] overflow-y-auto rounded-2xl bg-white border border-line shadow-lift p-6 sm:p-8" role="dialog" aria-labelledby="terms-title">
+      <div class="flex items-start justify-between gap-4 mb-4">
+        <h3 id="terms-title" class="text-xl font-bold text-ink">Terms of Service</h3>
+        <button type="button" class="modal-close text-mute hover:text-ink text-2xl leading-none" aria-label="Close">&times;</button>
+      </div>
+      <div class="space-y-3 text-sm text-mute leading-relaxed">
+        <p>By accessing or using SheetFlow AI (“the Service”), operated by MichaelLabs, you agree to be bound by these Terms of Service. If you do not agree, do not use the Service.</p>
+        <p><strong class="text-ink">Service description.</strong> SheetFlow AI provides AI-generated spreadsheet formulas for Excel and Google Sheets based on natural-language prompts. Output is provided for informational and productivity purposes.</p>
+        <p><strong class="text-ink">No warranty.</strong> Formulas are generated automatically and may contain errors. You are solely responsible for verifying correctness before use in production, financial, legal, or other critical contexts. The Service is provided “as is” without warranties of any kind, express or implied.</p>
+        <p><strong class="text-ink">Acceptable use.</strong> You may not abuse, overload, reverse-engineer, or attempt unauthorized access to the Service; use it for unlawful purposes; or resell access without written permission.</p>
+        <p><strong class="text-ink">Subscriptions &amp; billing.</strong> Paid plans (including Pro at $4.99/mo) are billed according to the plan you select via our payment provider. Prices may change with notice for future billing cycles.</p>
+        <p><strong class="text-ink">Limitation of liability.</strong> To the maximum extent permitted by law, MichaelLabs shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of the Service.</p>
+        <p><strong class="text-ink">Contact.</strong> <a href="mailto:michaellabs.co@gmail.com" class="text-emerald-700 underline">michaellabs.co@gmail.com</a></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Privacy -->
+  <div id="modal-privacy" class="modal-backdrop fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" aria-hidden="true">
+    <div class="modal-panel w-full max-w-lg max-h-[80vh] overflow-y-auto rounded-2xl bg-white border border-line shadow-lift p-6 sm:p-8" role="dialog" aria-labelledby="privacy-title">
+      <div class="flex items-start justify-between gap-4 mb-4">
+        <h3 id="privacy-title" class="text-xl font-bold text-ink">Privacy Policy</h3>
+        <button type="button" class="modal-close text-mute hover:text-ink text-2xl leading-none" aria-label="Close">&times;</button>
+      </div>
+      <div class="space-y-3 text-sm text-mute leading-relaxed">
+        <p>This Privacy Policy explains how MichaelLabs (“we”, “us”) collects and uses information when you use SheetFlow AI.</p>
+        <p><strong class="text-ink">Information we collect.</strong> We may collect prompts you submit, basic usage and device data (such as IP address, browser type, and timestamps), and account or contact details if you email us or purchase a Pro subscription.</p>
+        <p><strong class="text-ink">Payment information.</strong> Payments are processed by third-party providers (e.g. Lemon Squeezy). We do not store full payment card numbers on our servers. Those processors handle billing data under their own privacy policies.</p>
+        <p><strong class="text-ink">How we use data.</strong> We use data to generate formulas, operate and improve the Service, prevent abuse, provide customer support, and process subscriptions.</p>
+        <p><strong class="text-ink">Sharing.</strong> We do not sell personal information. We may share data with infrastructure and payment vendors solely to run the Service, or when required by law.</p>
+        <p><strong class="text-ink">Retention &amp; requests.</strong> We retain data as needed to provide the Service and meet legal obligations. You may request access or deletion of personal data by contacting us.</p>
+        <p><strong class="text-ink">Contact.</strong> <a href="mailto:michaellabs.co@gmail.com" class="text-emerald-700 underline">michaellabs.co@gmail.com</a></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Refund -->
+  <div id="modal-refund" class="modal-backdrop fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" aria-hidden="true">
+    <div class="modal-panel w-full max-w-lg max-h-[80vh] overflow-y-auto rounded-2xl bg-white border border-line shadow-lift p-6 sm:p-8" role="dialog" aria-labelledby="refund-title">
+      <div class="flex items-start justify-between gap-4 mb-4">
+        <h3 id="refund-title" class="text-xl font-bold text-ink">Refund Policy</h3>
+        <button type="button" class="modal-close text-mute hover:text-ink text-2xl leading-none" aria-label="Close">&times;</button>
+      </div>
+      <div class="space-y-3 text-sm text-mute leading-relaxed">
+        <p>We want you to be satisfied with SheetFlow AI Pro.</p>
+        <p><strong class="text-ink">7-day Money Back Guarantee.</strong> You may request a full refund within <strong class="text-ink">7 days</strong> of the original purchase or subscription charge. Eligible requests made within this window will be refunded in full.</p>
+        <p><strong class="text-ink">How to request.</strong> Email <a href="mailto:michaellabs.co@gmail.com" class="text-emerald-700 underline">michaellabs.co@gmail.com</a> with the email address used for purchase and a brief reason. Refunds are typically processed within 5–10 business days via our payment provider (e.g. Lemon Squeezy), depending on your bank or card issuer.</p>
+        <p><strong class="text-ink">After 7 days.</strong> Refunds requested outside the 7-day window are generally not available, except where required by applicable consumer law.</p>
+        <p><strong class="text-ink">Abuse.</strong> Repeated subscribe-and-refund cycles or other abuse of this policy may result in denial of future refunds or restriction of your access.</p>
+        <p><strong class="text-ink">Free Tier.</strong> Free usage has no charge and is not eligible for refunds.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      let toolType = "Excel";
+      const excelBtn = document.getElementById("btn-excel");
+      const sheetsBtn = document.getElementById("btn-sheets");
+      const promptEl = document.getElementById("prompt");
+      const generateBtn = document.getElementById("generate-btn");
+      const generateLabel = document.getElementById("generate-label");
+      const generateSpinner = document.getElementById("generate-spinner");
+      const resultEl = document.getElementById("result");
+      const errorEl = document.getElementById("error");
+      const copyBtn = document.getElementById("copy-btn");
+      const copyLabel = document.getElementById("copy-label");
+
+      const activeTool =
+        "tool-btn rounded-full px-3.5 py-1.5 text-xs font-semibold transition bg-white text-ink shadow-soft";
+      const inactiveTool =
+        "tool-btn rounded-full px-3.5 py-1.5 text-xs font-semibold transition text-mute hover:text-ink";
+
+      function setTool(next) {
+        toolType = next;
+        excelBtn.className = next === "Excel" ? activeTool : inactiveTool;
+        sheetsBtn.className = next === "Google Sheets" ? activeTool : inactiveTool;
+      }
+
+      excelBtn.addEventListener("click", function () {
+        setTool("Excel");
+      });
+      sheetsBtn.addEventListener("click", function () {
+        setTool("Google Sheets");
+      });
+
+      document.querySelectorAll(".example-chip").forEach(function (chip) {
+        chip.addEventListener("click", function () {
+          promptEl.value = chip.getAttribute("data-example") || "";
+          promptEl.focus();
+        });
+      });
+
+      function showError(message) {
+        errorEl.textContent = message;
+        errorEl.classList.remove("hidden");
+      }
+
+      function clearError() {
+        errorEl.textContent = "";
+        errorEl.classList.add("hidden");
+      }
+
+      function setLoading(loading) {
+        generateBtn.disabled = loading;
+        generateLabel.textContent = loading ? "Generating…" : "Generate Formula";
+        generateSpinner.classList.toggle("hidden", !loading);
+      }
+
+      function setPlaceholderResult() {
+        resultEl.innerHTML =
+          '<span class="text-slate-500 font-sans text-sm">Your formula will appear here…</span>';
+      }
+
+      generateBtn.addEventListener("click", async function () {
+        const prompt = (promptEl.value || "").trim();
+        clearError();
+
+        if (!prompt) {
+          showError("Please describe the formula you want.");
+          promptEl.focus();
+          return;
+        }
+
+        setLoading(true);
+        copyBtn.classList.add("hidden");
+        copyLabel.textContent = "Copy";
+        copyLabel.classList.remove("text-emerald-400");
+
+        try {
+          const response = await fetch("/api/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              prompt: prompt,
+              tool_type: toolType,
+            }),
+          });
+
+          let data = null;
+          try {
+            data = await response.json();
+          } catch (_) {
+            data = null;
+          }
+
+          if (!response.ok) {
+            const message =
+              (data && (data.detail || data.error || data.message)) ||
+              "Generation failed. Please try again.";
+            throw new Error(typeof message === "string" ? message : JSON.stringify(message));
+          }
+
+          const formula =
+            (data && (data.result || data.formula || data.output || data.text)) ||
+            (typeof data === "string" ? data : null);
+
+          if (!formula) {
+            throw new Error("No formula returned from the server.");
+          }
+
+          resultEl.textContent = formula;
+          copyBtn.classList.remove("hidden");
+        } catch (err) {
+          showError(err && err.message ? err.message : "Something went wrong.");
+          setPlaceholderResult();
+        } finally {
+          setLoading(false);
+        }
+      });
+
+      copyBtn.addEventListener("click", async function () {
+        const text = resultEl.textContent || "";
+        try {
+          await navigator.clipboard.writeText(text);
+          copyLabel.textContent = "Copied!";
+          copyLabel.classList.add("text-emerald-400");
+          setTimeout(function () {
+            copyLabel.textContent = "Copy";
+            copyLabel.classList.remove("text-emerald-400");
+          }, 1600);
+        } catch (_) {
+          showError("Could not copy to clipboard.");
+        }
+      });
+
+      // FAQ accordion
+      document.querySelectorAll(".faq-toggle").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          const item = btn.closest(".faq-item");
+          const wasOpen = item.classList.contains("open");
+          document.querySelectorAll(".faq-item").forEach(function (el) {
+            el.classList.remove("open");
+          });
+          if (!wasOpen) item.classList.add("open");
+        });
+      });
+
+      // Modals
+      const modals = {
+        terms: document.getElementById("modal-terms"),
+        privacy: document.getElementById("modal-privacy"),
+        refund: document.getElementById("modal-refund"),
+      };
+
+      function openModal(key) {
+        const el = modals[key];
+        if (!el) return;
+        el.classList.add("active");
+        el.setAttribute("aria-hidden", "false");
+        document.body.classList.add("modal-open");
+      }
+
+      function closeModal(el) {
+        if (!el) return;
+        el.classList.remove("active");
+        el.setAttribute("aria-hidden", "true");
+        if (
+          !Object.values(modals).some(function (m) {
+            return m.classList.contains("active");
+          })
+        ) {
+          document.body.classList.remove("modal-open");
+        }
+      }
+
+      document.querySelectorAll("[data-modal]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          openModal(btn.getAttribute("data-modal"));
+        });
+      });
+
+      Object.values(modals).forEach(function (modal) {
+        modal.addEventListener("click", function (e) {
+          if (e.target === modal) closeModal(modal);
+        });
+        const closeBtn = modal.querySelector(".modal-close");
+        if (closeBtn) {
+          closeBtn.addEventListener("click", function () {
+            closeModal(modal);
+          });
+        }
+      });
+
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") {
+          Object.values(modals).forEach(closeModal);
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
