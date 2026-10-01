@@ -23,22 +23,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 读取环境变量中的 API Key（兼容你 Render 现有的变量名）
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "").strip()
 SHEETFLOW_MODEL = os.getenv("SHEETFLOW_MODEL", "gemini-2.0-flash").strip()
-RATE_LIMIT_PER_MINUTE = int(os.getenv("RATE_LIMIT_PER_MINUTE", "12"))
+RATE_LIMIT_PER_MINUTE = int(os.getenv("RATE_LIMIT_PER_MINUTE", "15"))
 MAX_PROMPT_CHARS = int(os.getenv("MAX_PROMPT_CHARS", "2000"))
 OPENROUTER_TIMEOUT = float(os.getenv("OPENROUTER_TIMEOUT", "45"))
-
-MODEL_FALLBACKS = [
-    m.strip()
-    for m in os.getenv(
-        "SHEETFLOW_MODEL_FALLBACKS",
-        "google/gemma-3-4b-it:free,meta-llama/llama-3.3-70b-instruct:free,openai/gpt-oss-20b:free",
-    ).split(",")
-    if m.strip()
-]
-
-MODEL_CANDIDATES = [SHEETFLOW_MODEL] + [m for m in MODEL_FALLBACKS if m != SHEETFLOW_MODEL]
 
 client: AsyncOpenAI | None = None
 if OPENROUTER_API_KEY:
@@ -95,15 +85,6 @@ def _client_ip(request: Request) -> str:
     return "unknown"
 
 
-def _friendly_error(err: Exception | None) -> str:
-    if err is None:
-        return "Unknown error"
-    text = str(err)
-    if len(text) > 220:
-        return text[:217] + "..."
-    return text
-
-
 @app.get("/api/health")
 async def health():
     return {
@@ -119,14 +100,14 @@ async def generate_formula(req: FormulaRequest, request: Request):
     if client is None:
         raise HTTPException(
             status_code=503,
-            detail="OPENROUTER_API_KEY is not configured. Set it in your .env file.",
+            detail="API Key is not configured in Render environment variables.",
         )
 
     ip = _client_ip(request)
     if not rate_limiter.allow(ip):
         raise HTTPException(
             status_code=429,
-            detail=f"Too many requests. Limit is {RATE_LIMIT_PER_MINUTE} per minute. Please wait and try again.",
+            detail=f"Too many requests. Limit is {RATE_LIMIT_PER_MINUTE} per minute. Please wait a moment.",
         )
 
     system_prompt = f"""You are a senior spreadsheet automation specialist for {req.tool_type}.
@@ -138,53 +119,41 @@ STRICT OUTPUT FORMAT RULES:
 3. No opening conversational remarks (e.g. "Sure!", "Here is your formula:"). Be purely professional and direct.
 """
 
-    last_error: Exception | None = None
-    for model in MODEL_CANDIDATES:
-        try:
-            completion = await client.chat.completions.create(
-                model=model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": req.prompt},
-                ],
-                temperature=0.1,
-            )
-            content = completion.choices[0].message.content
-            if not content or not str(content).strip():
-                raise RuntimeError(f"Empty response from model {model}")
-            return {"result": content}
-        except RateLimitError as e:
-            last_error = e
-            continue
-        except APITimeoutError as e:
-            last_error = e
-            continue
-        except APIError as e:
-            last_error = e
-            status = getattr(e, "status_code", None)
-            message = str(e).lower()
-            if status == 429 or "rate" in message or "temporarily" in message:
-                continue
-            if status in {401, 403}:
-                raise HTTPException(
-                    status_code=502,
-                    detail="Upstream API authentication failed. Check OPENROUTER_API_KEY.",
-                )
-            raise HTTPException(status_code=502, detail="Upstream model provider error. Please try again.")
-        except Exception as e:
-            last_error = e
-            message = str(e).lower()
-            if "429" in message or "rate" in message or "temporarily" in message or "timeout" in message:
-                continue
-            raise HTTPException(status_code=500, detail="Failed to generate formula. Please try again.")
+    try:
+        completion = await client.chat.completions.create(
+            model=SHEETFLOW_MODEL,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": req.prompt},
+            ],
+            temperature=0.1,
+        )
+        content = completion.choices[0].message.content
+        if not content or not str(content).strip():
+            raise RuntimeError("Empty response received from Gemini.")
+        return {"result": content}
 
-    raise HTTPException(
-        status_code=429,
-        detail=(
-            "All formula models are temporarily unavailable or rate-limited. "
-            "Please wait a moment and try again."
-        ),
-    )
+    except RateLimitError as e:
+        raise HTTPException(
+            status_code=429,
+            detail="Gemini API rate limit reached. Please wait a few seconds and try again.",
+        )
+    except APITimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail="Request to Gemini timed out. Please try again.",
+        )
+    except APIError as e:
+        # 直接输出真实的 Google 错误详情，方便立刻定位
+        raise HTTPException(
+            status_code=502,
+            detail=f"Gemini API Error: {str(e)}",
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Server Error: {str(e)}",
+        )
 
 
 # Mount static files last so /api/* routes stay available
