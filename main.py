@@ -25,7 +25,7 @@ app.add_middleware(
 
 # 读取环境变量中的 API Key（兼容你 Render 现有的变量名）
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "").strip()
-SHEETFLOW_MODEL = os.getenv("SHEETFLOW_MODEL", "gemini-2.0-flash").strip()
+SHEETFLOW_MODEL = os.getenv("SHEETFLOW_MODEL", "gemini-3.8-flash").strip()
 RATE_LIMIT_PER_MINUTE = int(os.getenv("RATE_LIMIT_PER_MINUTE", "15"))
 MAX_PROMPT_CHARS = int(os.getenv("MAX_PROMPT_CHARS", "2000"))
 OPENROUTER_TIMEOUT = float(os.getenv("OPENROUTER_TIMEOUT", "45"))
