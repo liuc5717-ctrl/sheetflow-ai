@@ -24,7 +24,7 @@ app.add_middleware(
 )
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "").strip()
-SHEETFLOW_MODEL = os.getenv("SHEETFLOW_MODEL", "qwen/qwen3.8-27b:free").strip()
+SHEETFLOW_MODEL = os.getenv("SHEETFLOW_MODEL", "gemini-2.0-flash").strip()
 RATE_LIMIT_PER_MINUTE = int(os.getenv("RATE_LIMIT_PER_MINUTE", "12"))
 MAX_PROMPT_CHARS = int(os.getenv("MAX_PROMPT_CHARS", "2000"))
 OPENROUTER_TIMEOUT = float(os.getenv("OPENROUTER_TIMEOUT", "45"))
@@ -43,7 +43,7 @@ MODEL_CANDIDATES = [SHEETFLOW_MODEL] + [m for m in MODEL_FALLBACKS if m != SHEET
 client: AsyncOpenAI | None = None
 if OPENROUTER_API_KEY:
     client = AsyncOpenAI(
-        base_url="https://openrouter.ai/api/v1",
+        base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
         api_key=OPENROUTER_API_KEY,
         timeout=OPENROUTER_TIMEOUT,
         default_headers={
