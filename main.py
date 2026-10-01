@@ -46,10 +46,6 @@ if OPENROUTER_API_KEY:
         base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
         api_key=OPENROUTER_API_KEY,
         timeout=OPENROUTER_TIMEOUT,
-        default_headers={
-            "HTTP-Referer": os.getenv("SHEETFLOW_SITE_URL", "http://localhost:8000"),
-            "X-Title": "SheetFlow AI",
-        },
     )
 
 
