@@ -23,9 +23,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 读取环境变量中的 API Key（兼容你 Render 现有的变量名）
+# 读取环境变量中的 API Key（兼容 Render 现有的变量名）
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "").strip()
-SHEETFLOW_MODEL = os.getenv("SHEETFLOW_MODEL", "gemini-3.8-flash").strip()
 RATE_LIMIT_PER_MINUTE = int(os.getenv("RATE_LIMIT_PER_MINUTE", "15"))
 MAX_PROMPT_CHARS = int(os.getenv("MAX_PROMPT_CHARS", "2000"))
 OPENROUTER_TIMEOUT = float(os.getenv("OPENROUTER_TIMEOUT", "45"))
@@ -119,41 +118,45 @@ STRICT OUTPUT FORMAT RULES:
 3. No opening conversational remarks (e.g. "Sure!", "Here is your formula:"). Be purely professional and direct.
 """
 
-    try:
-        completion = await client.chat.completions.create(
-            model=SHEETFLOW_MODEL,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": req.prompt},
-            ],
-            temperature=0.1,
-        )
-        content = completion.choices[0].message.content
-        if not content or not str(content).strip():
-            raise RuntimeError("Empty response received from Gemini.")
-        return {"result": content}
+    # 优先使用主力模型 3.8，遇到 503/429 顺位自动降级备用模型
+    candidate_models = ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite"]
+    last_error_message = ""
 
-    except RateLimitError as e:
-        raise HTTPException(
-            status_code=429,
-            detail="Gemini API rate limit reached. Please wait a few seconds and try again.",
-        )
-    except APITimeoutError:
-        raise HTTPException(
-            status_code=504,
-            detail="Request to Gemini timed out. Please try again.",
-        )
-    except APIError as e:
-        # 直接输出真实的 Google 错误详情，方便立刻定位
-        raise HTTPException(
-            status_code=502,
-            detail=f"Gemini API Error: {str(e)}",
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Server Error: {str(e)}",
-        )
+    for model_name in candidate_models:
+        try:
+            completion = await client.chat.completions.create(
+                model=model_name,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": req.prompt},
+                ],
+                temperature=0.1,
+            )
+            content = completion.choices[0].message.content
+            if content and str(content).strip():
+                return {"result": content}
+        except RateLimitError as e:
+            last_error_message = str(e)
+            continue
+        except APITimeoutError as e:
+            last_error_message = str(e)
+            continue
+        except APIError as e:
+            last_error_message = str(e)
+            # 遇到 503 (服务端繁忙) 或 429 (限流)，继续尝试列表中的下一个备用模型
+            if getattr(e, "status_code", None) in {503, 429}:
+                continue
+            # 若是其他非拥堵错误（如权限/参数问题），直接报错抛出
+            raise HTTPException(status_code=502, detail=f"Gemini API Error: {last_error_message}")
+        except Exception as e:
+            last_error_message = str(e)
+            continue
+
+    # 如果所有候选模型均繁忙
+    raise HTTPException(
+        status_code=503,
+        detail=f"All Gemini models are temporarily experiencing high demand. Please retry in a few seconds. ({last_error_message})",
+    )
 
 
 # Mount static files last so /api/* routes stay available
